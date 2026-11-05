@@ -1,0 +1,1129 @@
+{
+  "info": {
+    "name": "Semana 12 Gestión Veterinaria",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Ejecutar completa en orden sobre datos de laboratorio. Crea y elimina sus propios registros. No modifica los datos iniciales."
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5227"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (pm.info.requestName.startsWith('01 ')) {",
+          "const id=Date.now().toString()+Math.floor(Math.random()*100000);",
+          "const dni=String(10000000+Math.floor(Math.random()*80000000));",
+          "pm.collectionVariables.set('runId',id); pm.collectionVariables.set('dni',dni);",
+          "pm.collectionVariables.set('otroDni',String(Number(dni)+1));",
+          "}"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "01 Crear propietario",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/propietarios",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"Propietario Postman\",\n  \"dni\": \"{{dni}}\",\n  \"telefono\": \"987654321\",\n  \"email\": \"lab-{{runId}}@example.com\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+              "pm.collectionVariables.set('ownerId', pm.response.json().idPropietario);",
+              "pm.test('Location del recurso', () => pm.expect(pm.response.headers.get('Location')).to.match(/api\\//i));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 Crear segundo propietario",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/propietarios",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"Propietario Postman\",\n  \"dni\": \"{{otroDni}}\",\n  \"telefono\": \"987654321\",\n  \"email\": \"otro-{{runId}}@example.com\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+              "pm.collectionVariables.set('otherId', pm.response.json().idPropietario);",
+              "pm.test('Location del recurso', () => pm.expect(pm.response.headers.get('Location')).to.match(/api\\//i));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 Listar propietarios",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/propietarios"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('Incluye propietario creado', () => pm.expect(pm.response.json().some(x => x.idPropietario === Number(pm.collectionVariables.get('ownerId')))).to.be.true);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 Filtro propietarios",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/propietarios?buscar={{dni}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('Filtro DNI', () => pm.expect(pm.response.json().some(x => x.dni === pm.collectionVariables.get('dni'))).to.be.true);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 Obtener propietario",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/propietarios/{{ownerId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 Mascotas vacías de propietario existente",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/propietarios/{{ownerId}}/mascotas"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('Colección vacía', () => pm.expect(pm.response.json()).to.eql([]));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 DNI duplicado POST",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/propietarios",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"Propietario Postman\",\n  \"dni\": \"{{dni}}\",\n  \"telefono\": \"987654321\",\n  \"email\": \"distinto-{{runId}}@example.com\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 409', () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 Email duplicado POST",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/propietarios",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"Propietario Postman\",\n  \"dni\": \"12345678\",\n  \"telefono\": \"987654321\",\n  \"email\": \"lab-{{runId}}@example.com\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 409', () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "09 Email mayúsculas duplicado",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/propietarios",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"Propietario Postman\",\n  \"dni\": \"12345678\",\n  \"telefono\": \"987654321\",\n  \"email\": \"LAB-{{runId}}@EXAMPLE.COM\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 409', () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "10 DNI duplicado PUT",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/propietarios/{{otherId}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"Propietario Postman\",\n  \"dni\": \"{{dni}}\",\n  \"telefono\": \"987654321\",\n  \"email\": \"otro-{{runId}}@example.com\",\n  \"idPropietario\": \"{{otherId}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 409', () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "11 Email duplicado PUT",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/propietarios/{{otherId}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"Propietario Postman\",\n  \"dni\": \"{{otroDni}}\",\n  \"telefono\": \"987654321\",\n  \"email\": \"lab-{{runId}}@example.com\",\n  \"idPropietario\": \"{{otherId}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 409', () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "12 Actualizar propietario",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/propietarios/{{ownerId}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"Propietario actualizado\",\n  \"dni\": \"{{dni}}\",\n  \"telefono\": \"987654321\",\n  \"email\": \"lab-{{runId}}@example.com\",\n  \"idPropietario\": \"{{ownerId}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 204', () => pm.response.to.have.status(204));",
+              "pm.test('Sin cuerpo', () => pm.expect(pm.response.text()).to.eql(''));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "13 Comprobar actualización propietario",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/propietarios/{{ownerId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('Nombre persistido', () => pm.expect(pm.response.json().nombre).to.eql('Propietario actualizado'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "14 Propietario inválido",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/propietarios",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"\",\n  \"dni\": \"abc\",\n  \"telefono\": \"987654321\",\n  \"email\": \"invalido\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 400', () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "15 ID propietario discordante",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/propietarios/{{ownerId}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"Propietario Postman\",\n  \"dni\": \"{{dni}}\",\n  \"telefono\": \"987654321\",\n  \"email\": \"lab-{{runId}}@example.com\",\n  \"idPropietario\": 0\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 400', () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "16 Crear mascota solo FK",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/mascotas",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"Luna Postman\",\n  \"especie\": \"Perro\",\n  \"raza\": \"Mestizo\",\n  \"edad\": 2,\n  \"peso\": 8.5,\n  \"idPropietario\": \"{{ownerId}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+              "pm.collectionVariables.set('petId', pm.response.json().idMascota);",
+              "pm.test('Location del recurso', () => pm.expect(pm.response.headers.get('Location')).to.match(/api\\//i));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "17 Listar mascotas con propietario",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/mascotas"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('Include sin ciclos', () => { const m=pm.response.json().find(x=>x.idMascota===Number(pm.collectionVariables.get('petId'))); pm.expect(m.propietario.idPropietario).to.eql(Number(pm.collectionVariables.get('ownerId'))); pm.expect(m.propietario).not.to.have.property('mascotas'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "18 Filtro especie",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/mascotas?especie=pErRo"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('Filtro sin distinción de mayúsculas', () => { pm.expect(pm.response.json().length).to.be.above(0); pm.response.json().forEach(m => pm.expect(m.especie.toLowerCase()).to.include('perro')); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "19 Obtener mascota",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/mascotas/{{petId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "20 Ruta anidada",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/propietarios/{{ownerId}}/mascotas"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('Mascota vinculada', () => pm.expect(pm.response.json().some(x=>x.idMascota===Number(pm.collectionVariables.get('petId')))).to.be.true);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "21 Eliminar propietario con mascotas",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": "{{baseUrl}}/api/propietarios/{{ownerId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 409', () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "22 Actualizar mascota",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/mascotas/{{petId}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"Luna actualizada\",\n  \"especie\": \"Perro\",\n  \"raza\": \"Mestizo\",\n  \"edad\": 2,\n  \"peso\": 9.25,\n  \"idPropietario\": \"{{ownerId}}\",\n  \"idMascota\": \"{{petId}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 204', () => pm.response.to.have.status(204));",
+              "pm.test('Sin cuerpo', () => pm.expect(pm.response.text()).to.eql(''));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "23 Comprobar actualización mascota",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/mascotas/{{petId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('Peso persistido', () => pm.expect(pm.response.json().peso).to.eql(9.25));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "24 FK inexistente POST",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/mascotas",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"Luna Postman\",\n  \"especie\": \"Perro\",\n  \"raza\": \"Mestizo\",\n  \"edad\": 2,\n  \"peso\": 8.5,\n  \"idPropietario\": 2147483647\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 400', () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "25 FK inexistente PUT",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/mascotas/{{petId}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"Luna Postman\",\n  \"especie\": \"Perro\",\n  \"raza\": \"Mestizo\",\n  \"edad\": 2,\n  \"peso\": 8.5,\n  \"idPropietario\": 2147483647,\n  \"idMascota\": \"{{petId}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 400', () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "26 Edad y peso inválidos",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/mascotas",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"Luna Postman\",\n  \"especie\": \"Perro\",\n  \"raza\": \"Mestizo\",\n  \"edad\": -1,\n  \"peso\": 1000,\n  \"idPropietario\": \"{{ownerId}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 400', () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "27 Nombre mascota obligatorio",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/mascotas",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"\",\n  \"especie\": \"Perro\",\n  \"raza\": \"Mestizo\",\n  \"edad\": 2,\n  \"peso\": 8.5,\n  \"idPropietario\": \"{{ownerId}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 400', () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "28 Nombre propietario demasiado largo",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/propietarios",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\n  \"dni\": \"{{dni}}\",\n  \"telefono\": \"987654321\",\n  \"email\": \"lab-{{runId}}@example.com\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 400', () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "29 ID mascota discordante",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/mascotas/{{petId}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"Luna Postman\",\n  \"especie\": \"Perro\",\n  \"raza\": \"Mestizo\",\n  \"edad\": 2,\n  \"peso\": 8.5,\n  \"idPropietario\": \"{{ownerId}}\",\n  \"idMascota\": 0\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 400', () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "30 propietarios GET inexistente",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/propietarios/2147483647"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 404', () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "31 propietarios PUT inexistente",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/propietarios/2147483647",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"Propietario Postman\",\n  \"dni\": \"{{dni}}\",\n  \"telefono\": \"987654321\",\n  \"email\": \"lab-{{runId}}@example.com\",\n  \"idPropietario\": 2147483647\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 404', () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "32 propietarios DELETE inexistente",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": "{{baseUrl}}/api/propietarios/2147483647"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 404', () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "33 mascotas GET inexistente",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/mascotas/2147483647"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 404', () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "34 mascotas PUT inexistente",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/mascotas/2147483647",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"Luna Postman\",\n  \"especie\": \"Perro\",\n  \"raza\": \"Mestizo\",\n  \"edad\": 2,\n  \"peso\": 8.5,\n  \"idPropietario\": \"{{ownerId}}\",\n  \"idMascota\": 2147483647\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 404', () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "35 mascotas DELETE inexistente",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": "{{baseUrl}}/api/mascotas/2147483647"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 404', () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "36 Ruta anidada propietario inexistente",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/propietarios/2147483647/mascotas"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 404', () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "37 Filtro sin resultados",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/mascotas?especie=SinCoincidencias{{runId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('Lista vacía', () => pm.expect(pm.response.json()).to.eql([]));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "38 Eliminar mascota",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": "{{baseUrl}}/api/mascotas/{{petId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 204', () => pm.response.to.have.status(204));",
+              "pm.test('Sin cuerpo', () => pm.expect(pm.response.text()).to.eql(''));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "39 Mascota eliminada",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/mascotas/{{petId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 404', () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "40 Eliminar propietario liberado",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": "{{baseUrl}}/api/propietarios/{{ownerId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 204', () => pm.response.to.have.status(204));",
+              "pm.test('Sin cuerpo', () => pm.expect(pm.response.text()).to.eql(''));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "41 Propietario eliminado",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/propietarios/{{ownerId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 404', () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "42 Eliminar segundo propietario",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": "{{baseUrl}}/api/propietarios/{{otherId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 204', () => pm.response.to.have.status(204));",
+              "pm.test('Sin cuerpo', () => pm.expect(pm.response.text()).to.eql(''));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+name: webapi-veterinaria
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-VeterinariaDb}
+      POSTGRES_USER: ${POSTGRES_USER:-webapi}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en .env}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-55433}:5432"
+    volumes:
+      - veterinaria-data:/var/lib/postgresql/data
+      - ./scrip.sql:/docker-entrypoint-initdb.d/01-veterinaria.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+volumes:
+  veterinaria-data:

@@ -1,0 +1,24 @@
+@Webapi_HostAddress = http://localhost:5227
+
+### Swagger en la raiz
+GET {{Webapi_HostAddress}}/
+
+### Listar propietarios
+GET {{Webapi_HostAddress}}/api/propietarios
+Accept: application/json
+
+### Buscar propietario
+GET {{Webapi_HostAddress}}/api/propietarios?buscar=Carlos
+Accept: application/json
+
+### Listar mascotas con propietario
+GET {{Webapi_HostAddress}}/api/mascotas
+Accept: application/json
+
+### Filtrar por especie
+GET {{Webapi_HostAddress}}/api/mascotas?especie=Perro
+Accept: application/json
+
+### Ruta anidada
+GET {{Webapi_HostAddress}}/api/propietarios/1/mascotas
+Accept: application/json
